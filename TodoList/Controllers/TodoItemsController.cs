@@ -18,9 +18,11 @@ namespace TodoList.Controllers
 
         // GET: api/TodoItems
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<TodoItem>>> GetTodoItem()
+        public async Task<ActionResult<IEnumerable<TodoItem>>> GetIncompleteToDos()
         {
-            return await _context.TodoItems.ToListAsync();
+            return await _context.TodoItems
+                                   .Where(t => t.CompletedDate == null)
+                                   .ToListAsync();
         }
 
         // GET: api/TodoItems/5
@@ -40,37 +42,63 @@ namespace TodoList.Controllers
         // PUT: api/TodoItems/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
+
+        //Create a Put request that takes two arguments: Id and ToDoItem and fills in the CompletedDate with the current datetime.
         public async Task<IActionResult> PutTodoItem(long id, TodoItem todoItem)
+
+{
+    // Check if the ID in the URL matches the ID of the item in the request body
+    if (id != todoItem.Id)
+    {
+        return BadRequest();
+    }
+
+    // Find the existing item in the database by ID
+    var existingItem = await _context.TodoItems.FindAsync(id);
+    if (existingItem == null)
+    {
+        return NotFound();
+    }
+
+    // Update the CompletedDate to the current date and time
+    existingItem.CompletedDate = DateTime.Now;
+
+    // Mark the entity as modified
+    _context.Entry(existingItem).State = EntityState.Modified;
+
+    try
+    {
+        // Save the changes to the database
+        await _context.SaveChangesAsync();
+    }
+    catch (DbUpdateConcurrencyException)
+    {
+        // Handle concurrency issues if the item was updated by another user
+        if (!TodoItemExists(id))
         {
-            if (id != todoItem.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(todoItem).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!TodoItemExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
+            return NotFound();
         }
+        else
+        {
+            throw;
+        }
+    }
+
+    // Return 204 No Content when the update is successful
+    return NoContent();
+}
+
+// Helper method to check if a TodoItem exists by ID
+private bool TodoItemExists(long id)
+{
+    return _context.TodoItems.Any(e => e.Id == id);
+}
 
         // POST: api/TodoItems
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
+        
+        //Create a Post request that takes one argument of ToDoItem and creates a new ToDoItem.
         public async Task<ActionResult<TodoItem>> PostTodoItem(IEnumerable<TodoItem> todoItem)
         {
             await _context.TodoItems.AddRangeAsync(todoItem);
@@ -95,7 +123,7 @@ namespace TodoList.Controllers
             return NoContent();
         }
 
-        private bool TodoItemExists(long id)
+        private bool TodoItemExist(long id)
         {
             return _context.TodoItems.Any(e => e.Id == id);
         }

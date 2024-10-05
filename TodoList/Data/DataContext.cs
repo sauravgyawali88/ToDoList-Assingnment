@@ -10,4 +10,5 @@ public class DataContext : DbContext
     }
         // Register ToDoItem class to the DataContext
     public DbSet<TodoItem> TodoItems { get; set; } = null!;
+   
 }
